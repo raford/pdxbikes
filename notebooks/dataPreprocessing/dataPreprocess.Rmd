@@ -167,7 +167,8 @@ summary(dat.raw)
 We then write this data set to file so we can use it in the future.
 
 ```{r}
-write.csv(dat.raw, file="~/GoogleDrive/pdxbikes/pdxbikes/data/interim/interim.csv")
+write.csv(dat.raw, file="~/GoogleDrive/pdxbikes/pdxbikes/data/interim/interim.csv",
+          row.names=FALSE)
 ```
 
 
