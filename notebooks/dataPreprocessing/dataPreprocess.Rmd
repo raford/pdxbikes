@@ -3,6 +3,8 @@ title: "Data preprocessing notebook for Biketown PDX"
 author: "Raymond Ford (raymond.anthony.ford@gmail.com)"
 date: "`r Sys.Date()`"
 output:
+  pdf_document:
+    toc: yes
   html_notebook:
     toc: yes
   html_document:
