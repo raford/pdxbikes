@@ -1,0 +1,1 @@
+This directory contains the R scripts used throughout this project. Where it differs from the other directories is that is only the R scripts (i.e. no notebooks and no commentary).
