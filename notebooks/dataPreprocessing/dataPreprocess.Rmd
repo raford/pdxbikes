@@ -1,0 +1,189 @@
+---
+title: "Data preprocessing notebook for Biketown PDX"
+author: "Raymond Ford (raymond.anthony.ford@gmail.com)"
+date: "`r Sys.Date()`"
+output:
+  html_notebook:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+---
+
+This notebook shows how the raw data was brought into `R`, transformed into a more usable form, and finally an interim data set is written to file. An in depth exploratory data analysis will be performed in a later notebook. It should be noted that our target variable is `Duration` since that seems to be where most of the revenue comes from.
+
+# Bringing in the raw data
+
+We first begin by bringing our raw data into `R`. Since all of the files we need to bring in are stored in `/data/raw/` and no other files are located in that directory we will do the following:
+
+1. Set our working directory to the folder containing the data for each of the 45 months.
+2. Obtain the names of each of the files in `/data/raw/` ending in `.csv`.
+3. Use these names to create a `list()` object from the files found in #1.
+4. Make this `list()` object into a `R` dataframe object.
+5. Create a data frame `dat.raw` which we will use for the remainder of this notebook.
+
+```{r}
+setwd("~/GoogleDrive/pdxbikes/pdxbikes/data/raw/")
+file.names <- list.files(pattern="*.csv")
+make.df <- lapply(file.names, read.csv)
+rm(file.names) # We do not need these anymore, so it's best to remove them.
+dat.raw <- do.call(rbind.data.frame, make.df)
+rm(make.df)
+```
+
+Since `/data/raw/` is hard coded, we obtain the above warning from `R`. We can move past this warning and continue on in our quest to better understand the data. Setting a relative path to remove this warning is something that we will work on at a later date.
+
+# Cleaning the data
+
+Now we will perform some basic transformations to the data frame that we created in the previous section. We begin by first looking at the structure of the data frame using the `str()` function.
+
+```{r}
+str(dat.raw)
+```
+
+To further see this data set at a snapshot we will use the `summary()` function.
+
+```{r}
+summary(dat.raw)
+```
+
+Using information obtained in the above two outputs---and combined with our wanting to understand trip duration since that determines the amount of revenue---we will remove several columns from the data. We remove the columns for `StartHub`, `EndHub`, `TripType` (due to the sheer number of missing values), `BikeID`, and `BikeName` from the data with the following code.
+
+```{r}
+dat.raw <- dat.raw[, -c(3, 8, 13:15)]
+```
+
+With these columns removed, we now take another look at the data using the `summary()` command. 
+
+```{r}
+summary(dat.raw)
+```
+
+Since `Duration` is our target variable, and we see missing values, we will remove the observations containing missing values for `Duration` and output the updated summary with the following code.
+
+```{r}
+dat.raw <- dat.raw[-which(dat.raw$Duration==""), ]
+summary(dat.raw)
+```
+
+Next we notice that `StartLongitude` has some very high values compared to where the Portland, OR metropolitan area is located, so we will take a closer look at these observations. 
+
+```{r}
+large.start.longitude <- which(dat.raw$StartLongitude >= -122)
+dat.raw[large.start.longitude, ]
+```
+
+In the above output we have identified three problematic observations/trips: 256402, 894634, and 988408. Looking at these trips individually we note the following:
+
+1. **256402:** The distance traveled in the given time frame is completely unreasonable, even if the trip based on starting and ending location are both within the Portland metro area. That is approximately 5200 miles in only 12 minutes. We will remove this observation from the data.
+2. **894634:** This observation did not begin in the Portland area, and it's distance when compared to time is completely unreasonable. Again, we will remove this observation.
+3. **988408:** Again this has the same issues as 2. We will also remove this observation.
+
+We remove these observations with the following code and output the summary of our updated data set.
+
+```{r}
+dat.raw <- dat.raw[-large.start.longitude, ]
+rm(large.start.longitude) # We do not need this anymore.
+summary(dat.raw)
+```
+
+Next we convert `Duration` into a decimal value recorded in minutes. The code to accomplish this task is below and inspired by this [StackOverflow](https://stackoverflow.com/questions/21781311/how-to-convert-time-to-decimal) post.
+
+```{r}
+dat.raw$Duration <- sapply(strsplit(as.character(dat.raw$Duration),":"),
+       function(x) {
+         x <- as.numeric(x)
+         x[1]*60+x[2]+x[3]/60
+       }
+)
+summary(dat.raw)
+```
+
+In the above output we notice at least one particular value for `Duration` is quite large. So we will look at the details for this one observation.
+
+```{r}
+dat.raw[which(dat.raw$Duration >= 33042053-1), ]
+```
+
+We notice that this observation's trip lasted until 1/5/2080, clearly in the future. Rather than remove just this one observation at this time, we will convert all of the dates into a date format and see how many other observations have start/end trips outside of a reasonable time frame.
+
+```{r}
+dat.raw$StartDate <- as.Date(dat.raw$StartDate, format="%m/%d/%Y")
+dat.raw$EndDate <- as.Date(dat.raw$EndDate, format="%m/%d/%Y")
+```
+
+Next we will eliminate all observations not found in our date time range, and output the summary.
+
+```{r}
+known.dates <- as.factor(seq(as.Date("2016-07-19"), as.Date("2020-03-31"), "days"))
+in.known.range <- which(as.factor(dat.raw$EndDate) %in% known.dates)
+dat.raw <- dat.raw[in.known.range, ]
+rm(known.dates, in.known.range) # We do not need these anymore.
+summary(dat.raw)
+```
+
+From the above output, we still see some values that are unreasonable: `Distance_Miles` and `Duration`. Since we're interested in `Duration` we will remove their extreme outliers.
+
+```{r}
+ex.out <- 3 * IQR(dat.raw$Duration)
+dur.out.in <- which(dat.raw$Duration >= ex.out)
+dat.raw <- dat.raw[-dur.out.in, ]
+rm(dur.out.in, ex.out) # We no longer need these values
+summary(dat.raw)
+```
+
+From the above output we notice that there still may exist some extreme outliers for `Distance_Miles` so we proceed to remove them too.
+
+```{r}
+ex.out <- 3 * IQR(dat.raw$Distance_Miles)
+dur.out.in <- which(dat.raw$Distance_Miles >= ex.out) 
+dat.raw <- dat.raw[-dur.out.in, ]
+rm(dur.out.in, ex.out) # We no longer need these values
+summary(dat.raw)
+```
+
+
+## Final cleaning
+Finally we will do some final cleaning before writing the data to file. We first check whether or not the values for `RouteID` are all unique.
+
+```{r}
+length(unique(dat.raw$RouteID)) == dim(dat.raw)[1]
+```
+
+Since `TRUE` (i.e. they are all unique) we remove `RouteID` as it adds no additional information.
+
+```{r}
+dat.raw <- dat.raw[, -1]
+summary(dat.raw)
+```
+
+Finally we will remove `StartLatitude`, `StartLongitude`, `EndLatitude`, `EndLongitude`, and `MultipleRental` as these values are not of interest to us in this project.
+
+```{r}
+dat.raw <- dat.raw[, -c(2, 3, 6, 7, 13)]
+summary(dat.raw)
+```
+
+We then write this data set to file so we can use it in the future.
+
+```{r}
+write.csv(dat.raw, file="~/GoogleDrive/pdxbikes/pdxbikes/data/interim/interim.csv")
+```
+
+
+# Known issues
+1. File paths are not relative.
+2. There are some hardcoded values used in cleaning the data.
+
+# Future work
+1. Fix all of the problems listed in the "Known issues" section
+2. Take another look at the raw data to find interesting observations. In particular observations riding at an unreasonable speed and trips that are either from the past or the future. This will be accomplished with another notebook
+3. Write an `R` script that will create the file outputed from this notebook without having to run through this notebook. We will store it in a `/src/` directory.
+
+# Session information
+Below you will find the output from `sessionInfo()` to assist in reproducing the work shown in this notebook.
+
+```{r}
+sessionInfo()
+```
+
