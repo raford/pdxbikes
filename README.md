@@ -1,7 +1,7 @@
 # pdxbikes
 A data analysis project using Portland's Biketown PDX data.
 
-This is a new project that I am currently working on. I will be updating it as I go along.
+**This is a new project that I am currently working on. I will be updating it as I go along. Once complete I will remove this line, and have a better README.md file**
 
 The goal is to have this be a "full stack" data science project.
 
