@@ -3,9 +3,9 @@ title: "Data preprocessing notebook for Biketown PDX"
 author: "Raymond Ford (raymond.anthony.ford@gmail.com)"
 date: "`r Sys.Date()`"
 output:
-  pdf_document:
-    toc: yes
   html_notebook:
+    toc: yes
+  pdf_document:
     toc: yes
   html_document:
     df_print: paged
@@ -180,8 +180,8 @@ write.csv(dat.raw, file="~/GoogleDrive/pdxbikes/pdxbikes/data/interim/interim.cs
 
 # Future work
 1. Fix all of the problems listed in the "Known issues" section
-2. Take another look at the raw data to find interesting observations. In particular observations riding at an unreasonable speed and trips that are either from the past or the future. This will be accomplished with another notebook
-3. Write an `R` script that will create the file outputed from this notebook without having to run through this notebook. We will store it in a `/src/` directory.
+2. ~~Take another look at the raw data to find interesting observations. In particular observations riding at an unreasonable speed and trips that are either from the past or the future. This will be accomplished with another notebook~~ ***Completed on 6 June 2020. This notebook can be found at https://github.com/raford/pdxbikes/tree/master/notebooks/notableMentions ***
+3. ~~Write an `R` script that will create the file outputed from this notebook without having to run through this notebook. We will store it in a `/src/` directory.~~ ***Completed on 27 May 2020. This script can be found at https://github.com/raford/pdxbikes/tree/master/src/data titled `makeInterimData.R` ***
 
 # Session information
 Below you will find the output from `sessionInfo()` to assist in reproducing the work shown in this notebook.
