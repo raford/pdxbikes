@@ -1,0 +1,184 @@
+---
+title: "Interesting observations for Biketown PDX"
+author: "Raymond Ford (raymond.anthony.ford@gmail.com)"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+always_allow_html: yes
+---
+
+This notebook looks at some of the interesting observations noted when we first began to look at the raw data in the [data preprocessing notebook](https://github.com/raford/pdxbikes/tree/master/notebooks/dataPreprocessing), and we will extend these observations to the entire data set. In particular, we seek to identify observations (trips) where the rider traveled at an excessive speed, or perhaps may have been a time traveler (trips beginning or ending in the past/future). All of these observations can be attributed to some type of data entry error, but maybe, just maybe, there are time travelers riding the orange Biketown PDX bikes around town, or Marvels's Quicksilver/DC's Flash rides among us.
+
+# Preliminaries
+Before we begin to look for these interesting observations/trips, we will need to import some `R` packages and bring in all of the raw data into `R`.
+
+## Required packages
+We will use the following `R` packages for this endeavor. These packages allow us to create location plots/maps.
+
+```{r}
+require(sp)
+require(leaflet)
+require(webshot)
+```
+
+
+## Bringing in the raw data
+
+We first begin by bringing our raw data into `R`. Since all of the files we need to bring in are stored in `/data/raw/` and no other files are located in that directory we will do the following:
+
+1. Set our working directory to the folder containing the data for each of the 45 months.
+2. Obtain the names of each of the files in `/data/raw/` ending in `.csv`.
+3. Use these names to create a `list()` object from the files found in #1.
+4. Make this `list()` object into a `R` dataframe object.
+5. Create a data frame `dat.raw` which we will use for the remainder of this notebook.
+
+```{r}
+setwd("~/GoogleDrive/pdxbikes/pdxbikes/data/raw/")
+file.names <- list.files(pattern="*.csv")
+make.df <- lapply(file.names, read.csv)
+rm(file.names) # We do not need these anymore, so it's best to remove them.
+dat.raw <- do.call(rbind.data.frame, make.df)
+rm(make.df)
+```
+
+Since `/data/raw/` is hard coded, we obtain the above warning from `R`. We can move past this warning and continue on in our quest to identify interesting observations the raw data. 
+
+
+# Time travelers
+We first begin by converting `StartDate` and `EndDate` into "Date" objects, and then output a summary of the data.
+
+```{r}
+dat.raw$StartDate <- as.Date(dat.raw$StartDate, format="%m/%d/%Y")
+dat.raw$EndDate <- as.Date(dat.raw$EndDate, format="%m/%d/%Y")
+summary(dat.raw)
+```
+
+In the above output we notice the following: 
+
+1. All of the dates for `StartDate` are within the expected range of our data.
+2. There are dates in `EndDate` that are outside the expected range of our data. In particular we see trips that ended in 1969 and 2080.
+
+To take a closer look at the trips outside of our expected date range for our data we will obtain their observation numbers, create a subset of `dat.raw` and name it `time.travel`, and output a summary of this subset of the data with the following code.
+
+```{r}
+known.dates <- as.factor(seq(as.Date("2016-07-19"), as.Date("2020-03-31"), "days"))
+in.known.range <- which(as.factor(dat.raw$EndDate) %in% known.dates)
+time.travel <- dat.raw[-in.known.range, ]
+rm(in.known.range, known.dates)
+summary(time.travel)
+```
+
+In the above output for `EndDate` we notice that in addition to trips ending in 1969 and 2080, there are 4394 trips which have no recorded end date. We will remove these and output a summary of the updated data set.
+
+```{r}
+time.travel <- time.travel[!is.na(time.travel$EndDate), ]
+dim(time.travel)
+summary(time.travel)
+```
+
+We note that there are 58 observations not found in our expected date range, and some of them have missing starting and ending locations. To get a better idea of the unreasonable dates we will output a table of the ending dates.
+
+```{r}
+table(time.travel$EndDate)
+```
+
+From the above output we notice that most of the ending dates are either in 1969 or 2080, with a few trips in between. The next time we would get the opportunity to meet one of these time travelers is 27 Nov. 2023. In fact, we can identify where this individual will return their bicycle rental with the following code.
+
+```{r}
+time.travel[which(time.travel$EndDate=="2023-11-27"), ]
+```
+
+While no `EndHub` is provided, we do have the ending longitude, latitude, and time for the bicycle's return. We can visualize this location with the code below, and perhaps meet up with the time traveler to share an IPA on a chilly November day in 2023. (Note: If you're viewing this in the PDF form of the notebook, then you will not be able to zoom in/out. This functionality is only available in the `.nb.html` version.)
+
+```{r}
+# This solution came from a solution posted on StackOverflow. Unfortunately, I
+# cannot find the url at this time, but I will update with the appropriate link
+# when I find it.
+df <- data.frame(longitude = -122.6864, latitude = 45.51429)
+coordinates(df) <- ~ longitude + latitude
+leaflet(df) %>% 
+  addMarkers() %>% 
+  addTiles()
+```
+
+
+We can also visualize all the locations where all the time travelers will complete their trip with the code and plot below; we just need to remove the missing values for ten of the observations first.
+
+```{r}
+df <- data.frame(longitude=na.omit(time.travel$EndLongitude), latitude=na.omit(time.travel$EndLatitude))
+
+coordinates(df) <- ~ longitude + latitude
+leaflet(df) %>% 
+  addMarkers() %>% 
+  addTiles()
+```
+
+
+# Speed demons
+In this section we will look at  individual observation's/trip's that are not humanly possible to complete. For example, a rider's speed was in excess of what one would consider feasible on a bicycle---even under the best conditions.
+
+Before we begin we will clean up our `R` environment.
+
+```{r}
+rm(df, time.travel)
+```
+
+With that out of the way we will now create a new column of data known as `Mph` (miles per hour) from `dat.raw`. We do this by first converting `Duration` into a decimal value. Next with use this decimal value and `Distance_Miles` to compute the speed into miles per hour which is stored into `Mph`.
+
+```{r}
+speed.demon <- dat.raw
+rm(dat.raw) # We no longer need this.
+speed.demon$Duration <- sapply(strsplit(as.character(speed.demon$Duration),":"),
+       function(x) {
+         x <- as.numeric(x)
+         x[1]*60+x[2]+x[3]/60
+       }
+)
+speed.demon <- speed.demon[!is.na(speed.demon$Duration), ]
+speed.demon <- speed.demon[!is.na(speed.demon$Distance_Miles), ]
+speed.demon$Mph <- (speed.demon$Distance_Miles / speed.demon$Duration) * 60
+summary(speed.demon$Mph)
+```
+
+From the above we see that one rider traveled at around 310543 miles per hour. To understand just how insane this speed is we note that the engineering masterpiece known as [Lockheed's SR-71 Blackbird](https://en.wikipedia.org/wiki/Lockheed_SR-71_Blackbird "Wikipedia") travels at (a publicly disclosed speed of) 2200 mph.
+
+We can try visualize how many other fast riders rode by plotting a stem-and-leaf plot of all the trips.
+
+```{r}
+stem(speed.demon$Mph)
+```
+
+We see that there will several trips exceeding the SR-71's top speed, and we will thus subset the data by only looking at the trips having a speed that exceeded 2200 mph.
+
+```{r}
+speed.demon <- subset(speed.demon, Mph > 2200)
+dim(speed.demon)
+```
+
+With only 27 trips having a speed exceeding 2,200 mph we can output the entire subset.
+
+```{r}
+speed.demon
+```
+
+While we could dig deeper into what makes these speed demons unique, we have elected not to carry out this step. Our main goal with this entire project is to provide deliverables that do not rely on these interesting observations. So we will conclude this notebook here, and possibly take up this endeavor in the future.
+
+# Final thoughts
+There are so many other interesting observations and analyses that this data set could be used for. I wanted to look at some interesting observations found in the data not humanly possible, as noted in a previous [notebook](https://github.com/raford/pdxbikes/tree/master/notebooks/dataPreprocessing). I personally enjoy finding these types of observations that seemingly defy logic/reality (i.e. a bicycle rider traveling faster than an SR-71, or potential time travelers).
+
+# Future work
+1. Find the URL for the leaflet/map plotting solution from Stack Overflow and add it in the appropriate location in this notebook.
+2. Replace the absolute paths with relative paths for bringing the data into `R`.
+
+# Session information
+Below you will find the output from `sessionInfo()` to assist in reproducing the work shown in this notebook.
+
+```{r}
+sessionInfo()
+```
