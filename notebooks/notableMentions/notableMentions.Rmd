@@ -94,12 +94,9 @@ From the above output we notice that most of the ending dates are either in 1969
 time.travel[which(time.travel$EndDate=="2023-11-27"), ]
 ```
 
-While no `EndHub` is provided, we do have the ending longitude, latitude, and time for the bicycle's return. We can visualize this location with the code below, and perhaps meet up with the time traveler to share an IPA on a chilly November day in 2023. (Note: If you're viewing this in the PDF form of the notebook, then you will not be able to zoom in/out. This functionality is only available in the `.nb.html` version.)
+While no `EndHub` is provided, we do have the ending longitude, latitude, and time for the bicycle's return. We can visualize this location with the code below, and perhaps meet up with the time traveler to share an IPA on a chilly November day in 2023. (Note: If you're viewing this in the PDF form of the notebook, then you will not be able to zoom in/out. This functionality is only available in the `.nb.html` version.) The code for this plot---and the next---is an adaptation of a piece of code from [StackOverflow](https://stackoverflow.com/questions/23130604/plot-coordinates-on-map).
 
 ```{r}
-# This solution came from a solution posted on StackOverflow. Unfortunately, I
-# cannot find the url at this time, but I will update with the appropriate link
-# when I find it.
 df <- data.frame(longitude = -122.6864, latitude = 45.51429)
 coordinates(df) <- ~ longitude + latitude
 leaflet(df) %>% 
@@ -173,7 +170,7 @@ While we could dig deeper into what makes these speed demons unique, we have ele
 There are so many other interesting observations and analyses that this data set could be used for. I wanted to look at some interesting observations found in the data not humanly possible, as noted in a previous [notebook](https://github.com/raford/pdxbikes/tree/master/notebooks/dataPreprocessing). I personally enjoy finding these types of observations that seemingly defy logic/reality (i.e. a bicycle rider traveling faster than an SR-71, or potential time travelers).
 
 # Future work
-1. Find the URL for the leaflet/map plotting solution from Stack Overflow and add it in the appropriate location in this notebook.
+1. ~~Find the URL for the leaflet/map plotting solution from Stack Overflow and add it in the appropriate location in this notebook.~~ ***Completed on 6 June 2020. Only visible in html notebook and not visible in pdf notebook, so here it is https://stackoverflow.com/questions/23130604/plot-coordinates-on-map ***
 2. Replace the absolute paths with relative paths for bringing the data into `R`.
 
 # Session information
