@@ -1,0 +1,98 @@
+---
+title: "Data aggregating notebook for Biketown PDX"
+author: "Raymond Ford (raymond.anthony.ford@gmail.com)"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: yes
+  html_notebook:
+    toc: yes
+  html_document:
+    df_print: paged
+    toc: yes
+---
+
+This notebook will take the interim data and transform it into a form that separates `Casual` and `Subscriber` users.
+
+# Preliminaries
+Before we begin this notebook we will need the following function and `R` package.
+
+## Needed function
+This function is based on a solution provided from [Stack Overflow](https://stackoverflow.com/questions/5200437/aggregating-hourly-data-into-daily-aggregates), and we have adapted it to accompish what we need it to do.
+
+```{r}
+totals <- function(x){
+  # This function will take a numerical vector x and output the sum of x and
+  # the mean of x.
+  # ----------
+  # INPUT
+  # x := a numerical vector.
+  # ----------
+  # OUTPUT
+  # A data object with columns containing the sum and mean of x.
+  c(sum=sum(x), mean=mean(x))
+}
+```
+
+## Needed packages
+In order to aggregate the data we will take advantage of the syntactic sugar provided by the `zoo` package avialable in `R`.
+
+```{r}
+require(zoo)
+```
+
+## Bringing in the data
+We begin by bringing the data into `R`, and output a summary of the data using `summary()`.
+
+```{r}
+int.dat <- read.csv("https://raw.githubusercontent.com/raford/pdxbikes/master/data/interim/interim.csv",
+                    header=TRUE, sep=",")
+summary(int.dat)
+```
+
+We next subset the data into two distinct groups: one for `Casual` users and one for the `Subscriber` group---both based on the payment plan used.
+```{r}
+cas.dat <- subset(int.dat, PaymentPlan == "Casual")[, -1] # Payment plan in first column
+sub.dat <- subset(int.dat, PaymentPlan == "Subscriber")[, -1]
+rm(int.dat)
+```
+
+# Aggregate the data
+We next construct two separate data sets: one containing the data for the `Casual` users and one containing the `Subscriber` users, and then write each to their own CSV file. The code used to create the datasets for each of these classes is below, and labeled appropriately.
+
+## Casual users
+```{r}
+cas.dat$StartDate <- as.Date(cas.dat$StartDate)
+Date <- seq.Date(from=min(cas.dat$StartDate), to=max(cas.dat$StartDate), "days")
+cas.dat <- cas.dat[, -c(2, 3, 4, 7)]
+cas.dat.agg <- read.zoo(cas.dat, header=TRUE, aggregate=totals)
+cas.dat.agg <- cbind(Date, as.data.frame(cas.dat.agg))
+write.csv(cas.dat.agg, file="~/GoogleDrive/pdxbikes/pdxbikes/data/aggregate/casual.csv",
+          row.names=FALSE)
+rm(cas.dat, cas.dat.agg)
+```
+
+## Subscribers
+```{r}
+sub.dat$StartDate <- as.Date(sub.dat$StartDate)
+Date <- seq.Date(from=min(sub.dat$StartDate), to=max(sub.dat$StartDate), "days")
+sub.dat <- sub.dat[, -c(2, 3, 4, 7)]
+sub.dat.agg <- read.zoo(sub.dat, header=TRUE, aggregate=totals)
+sub.dat.agg <- cbind(Date, as.data.frame(sub.dat.agg))
+write.csv(sub.dat.agg, file="~/GoogleDrive/pdxbikes/pdxbikes/data/aggregate/subscriber.csv",
+          row.names=FALSE)
+rm(sub.dat, sub.dat.agg)
+```
+
+# Future work
+
+1. Perform some exploratory data analysis (EDA) for these data sets.
+2. Create `R` scripts that will create these data sets.
+
+# Session information
+Below you will find the output from `sessionInfo()` to assist in reproducing the work shown in this notebook.
+
+```{r}
+sessionInfo()
+```
+
