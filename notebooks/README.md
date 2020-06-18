@@ -9,6 +9,10 @@ Below you will find a brief description of each of the folders, along with
 their contents.
 
 
+/dataAggregator/     := contains the code, and some brief commentary, used to
+	create daily aggregate statistics for trip duration and trip distance.
+
+
 /dataPreprocessing/  := contains the code, and commentary, that led to the
     creation of the interim data set that will later be refined for analysis.
 
