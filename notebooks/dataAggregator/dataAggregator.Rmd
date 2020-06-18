@@ -87,7 +87,7 @@ rm(sub.dat, sub.dat.agg)
 # Future work
 
 1. Perform some exploratory data analysis (EDA) for these data sets.
-2. Create `R` scripts that will create these data sets.
+2. ~~Create `R` scripts that will create these data sets.~~  __Completed on 18 June 2020. These scripts are located in `/src/data/`__
 
 # Session information
 Below you will find the output from `sessionInfo()` to assist in reproducing the work shown in this notebook.
