@@ -1,3 +1,5 @@
+
+
 This folder contains notebooks used throughout the analysis of this project.
 Each folder contains the following: a R-markdown file (.Rmd) for the notebook,
 a HTML version of the notebook (.nb.html), and a PDF version of the notebook to
@@ -22,3 +24,5 @@ their contents.
     from the original data to create the interim data. In particular, we looked
     at individuals that had began/ended a trip outside of the time range of
     Biketown PDX's time in operation and speeds that defy reason.
+
+
